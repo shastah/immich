@@ -16,6 +16,11 @@ extension type const TagStore._(Provider<TagMutations> _provider) implements Pro
   ///
   /// **NOTE:** This is not reactive to changes, and only hits the HTTP API
   AutoDisposeFutureProvider<List<Tag>> all() => _allProvider;
+
+  /// The tags applied to the asset [assetId]
+  ///
+  /// **NOTE:** This is only reactive to [TagMutations], and only hits the HTTP API
+  AutoDisposeFutureProvider<List<Tag>> forAsset(String assetId) => _forAssetProvider(assetId);
 }
 
 final _allProvider = FutureProvider.autoDispose<List<Tag>>((ref) async {
@@ -23,6 +28,15 @@ final _allProvider = FutureProvider.autoDispose<List<Tag>>((ref) async {
     return await ref.watch(tagApiRepositoryProvider).getAll();
   } catch (error, stack) {
     _log.severe("Failed to get all tags", error, stack);
+    return const [];
+  }
+});
+
+final _forAssetProvider = FutureProvider.autoDispose.family<List<Tag>, String>((ref, assetId) async {
+  try {
+    return await ref.watch(tagApiRepositoryProvider).getForAsset(assetId);
+  } catch (error, stack) {
+    _log.severe("Failed to get tags for asset $assetId", error, stack);
     return const [];
   }
 });
@@ -43,7 +57,11 @@ class TagMutations extends StoreMutations {
   /// Apply every tag in [tagIds] to every asset in [assetIds], returning the number of assets successfully tagged
   Future<int> applyToAssets(List<String> assetIds, List<String> tagIds) async {
     try {
-      return await read(tagApiRepositoryProvider).bulkTagAssets(assetIds, tagIds);
+      final count = await read(tagApiRepositoryProvider).bulkTagAssets(assetIds, tagIds);
+      for (final assetId in assetIds) {
+        invalidate(_forAssetProvider(assetId));
+      }
+      return count;
     } catch (error, stack) {
       _log.severe("Failed to tag assets", error, stack);
       rethrow;

@@ -117,6 +117,10 @@ abstract class StoreMutations {
   /// Read the state associated with a [provider]
   @protected
   T read<T>(ProviderListenable<T> provider) => _ref.read(provider);
+
+  /// Invalidate [provider], refetching it if it is being listened to
+  @protected
+  void invalidate(ProviderOrFamily provider) => _ref.invalidate(provider);
 }
 
 /// Mutations for a store entry whose reads are backed by a [StoreCache]
